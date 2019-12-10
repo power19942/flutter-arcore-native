@@ -15,6 +15,7 @@
          the app only being visible in the Google Play Store on devices that support ARCore.
          For an "AR Optional" app, remove this tag. -->
     <uses-feature android:name="android.hardware.camera.ar" android:required="true"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <application
         android:name="io.flutter.app.FlutterApplication"
@@ -44,5 +45,6 @@
             </intent-filter>
         </activity>
         <activity android:name=".ArActivity" android:theme="@style/Theme.AppCompat.NoActionBar"/>
+        <activity android:name=".LocationActivity" android:theme="@style/Theme.AppCompat.NoActionBar"/>
     </application>
 </manifest>

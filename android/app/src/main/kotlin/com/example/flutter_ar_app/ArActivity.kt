@@ -12,21 +12,30 @@ import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.widget.Toast
+import com.google.ar.core.Frame
 import com.google.ar.core.HitResult
 import com.google.ar.core.Plane
 import com.google.ar.sceneform.AnchorNode
 import com.google.ar.sceneform.rendering.ModelRenderable
 import com.google.ar.sceneform.ux.ArFragment
 import com.google.ar.sceneform.ux.TransformableNode
+import uk.co.appoly.arcorelocation.LocationScene
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutionException
+import com.google.ar.sceneform.ArSceneView
+import com.google.ar.sceneform.Node
+import uk.co.appoly.arcorelocation.LocationMarker
+
 
 class ArActivity : AppCompatActivity() {
 
     private val TAG = ArActivity::class.java!!.simpleName
     private val MIN_OPENGL_VERSION = 3.0
-
+    private var hasFinishedLoading = false
     private var arFragment: ArFragment? = null
     private var andyRenderable: ModelRenderable? = null
-
+    var locationScene:LocationScene? =null
+    lateinit var arSceneView: ArSceneView
     @RequiresApi(Build.VERSION_CODES.N)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,20 +43,56 @@ class ArActivity : AppCompatActivity() {
             return
         }
         setContentView(R.layout.activity_ar)
-        arFragment = supportFragmentManager.findFragmentById(R.id.ux_fragment) as ArFragment?
+        //arFragment = supportFragmentManager.findFragmentById(R.id.ux_fragment) as ArFragment?
 
-        ModelRenderable.builder()
+        var andy = ModelRenderable.builder()
                 .setSource(this, Uri.parse("andy.sfb"))
                 .build()
-                .thenAccept { renderable -> andyRenderable = renderable }
+                /*.thenAccept { renderable -> andyRenderable = renderable }
                 .exceptionally { throwable ->
                     val toast = Toast.makeText(this, "Unable to load andy renderable", Toast.LENGTH_LONG)
                     toast.setGravity(Gravity.CENTER, 0, 0)
                     toast.show()
                     null
+                }*/
+
+        CompletableFuture.allOf(andy)
+                .handle { notUsed, throwable ->
+                    if (throwable != null) {
+                        Toast.makeText(this@ArActivity,"Unable to load renderables",Toast.LENGTH_SHORT).show()
+                        return@handle
+                    }
+
+                    try {
+                        andyRenderable = andy.get()
+                        hasFinishedLoading = true
+
+                    } catch (ex: InterruptedException) {
+                        Toast.makeText(this@ArActivity,"Unable to load renderables",Toast.LENGTH_SHORT).show()
+                    } catch (ex: ExecutionException) {
+                        Toast.makeText(this@ArActivity,"Unable to load renderables",Toast.LENGTH_SHORT).show()
+                    }
+
+                    null
                 }
 
-        arFragment?.setOnTapArPlaneListener { hitResult: HitResult, plane: Plane, motionEvent: MotionEvent ->
+        arSceneView = findViewById(R.id.ar_scene_view)
+        arSceneView.scene.addOnUpdateListener {firstTime ->
+
+            if (locationScene == null){
+                locationScene = LocationScene(this@ArActivity,arSceneView)
+                var l = LocationScene(this@ArActivity,arSceneView)
+                l.mLocationMarkers.add(LocationMarker(-0.119677,51.478494,getAndy()))
+            }
+
+            val frame: Frame? = arSceneView.arFrame ?: return@addOnUpdateListener
+            if (locationScene != null){
+                locationScene!!.processFrame(frame)
+            }
+
+        }
+
+        /*arFragment?.setOnTapArPlaneListener { hitResult: HitResult, plane: Plane, motionEvent: MotionEvent ->
             if (andyRenderable == null) {
                 return@setOnTapArPlaneListener
             }
@@ -62,7 +107,19 @@ class ArActivity : AppCompatActivity() {
             andy.setParent(anchorNode)
             andy.renderable = andyRenderable
             andy.select()
+        }*/
+    }
+
+    private fun getAndy(): Node {
+        val base = Node()
+        base.renderable = andyRenderable
+        val c = this
+        base.setOnTapListener { v, event ->
+            Toast.makeText(
+                    c, "Andy touched.", Toast.LENGTH_LONG)
+                    .show()
         }
+        return base
     }
 
     private fun checkIsSupportedDeviceOrFinish(activity: Activity): Boolean {
@@ -85,3 +142,4 @@ class ArActivity : AppCompatActivity() {
         return true
     }
 }
+

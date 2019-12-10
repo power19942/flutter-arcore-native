@@ -21,7 +21,7 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterView, CHANNEL).setMethodCallHandler { call, result ->
             Log.d("FlutterAppAR","clicked ${call.method}")
             if (call.method == "activity"){
-                startActivity(Intent(this@MainActivity, ArActivity::class.java))
+                startActivity(Intent(this@MainActivity, LocationActivity::class.java))
             }
         }
     }
